@@ -13,6 +13,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	gohandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/pttrulez/product-microservices/currency"
 )
 
 func main() {
@@ -23,7 +24,6 @@ func main() {
 	ph := handlers.NewProducts(l)
 
 	// create client
-	
 
 	//create mux
 	sm := mux.NewRouter()
