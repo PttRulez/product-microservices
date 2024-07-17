@@ -31,7 +31,7 @@ func main() {
 	// register the currency server
 	protos.RegisterCurrencyServer(gs, cs)
 
-	// register the reflection service which allows clients to determine the methods
+	// register the reflection service which allows clients to determine methods
 	// for this gRPC service
 	reflection.Register(gs)
 
