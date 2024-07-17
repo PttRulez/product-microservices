@@ -88,6 +88,8 @@ github.com/pttrulez/product-microservices/currency v0.0.0-20240716170141-a50708b
 github.com/pttrulez/product-microservices/currency v0.0.0-20240716170141-a50708bd8f7f/go.mod h1:pH+BoTYeEvbDZhYoMi3jnGLFeHYwM7mBXj/V7RRr6PA=
 github.com/pttrulez/product-microservices/currency v0.0.0-20240717084957-1be59f8a5ff9 h1:AORW2DsAUfxvCnfHQjXVUiqjWqkk2FYIsOHZX33wZtk=
 github.com/pttrulez/product-microservices/currency v0.0.0-20240717084957-1be59f8a5ff9/go.mod h1:PWUzXbvD9/3zQsz+TrVEgrb6aqifKkLmXgLuGd6XiPU=
+github.com/pttrulez/product-microservices/currency v0.0.0-20240717171615-aa44b7fc3d51 h1:Q7LogJuJA/MmLXQjMNzZMdycGoc9r+tHDNKO0B7Ydd0=
+github.com/pttrulez/product-microservices/currency v0.0.0-20240717171615-aa44b7fc3d51/go.mod h1:PWUzXbvD9/3zQsz+TrVEgrb6aqifKkLmXgLuGd6XiPU=
 github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
 github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

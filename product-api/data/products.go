@@ -58,10 +58,20 @@ type Products []*Product
 type ProductsDB struct {
 	currency protos.CurrencyClient
 	log      hclog.Logger
+	rates    map[string]float64
 }
 
 func NewProductsDB(c protos.CurrencyClient, l hclog.Logger) *ProductsDB {
-	return &ProductsDB{c, l}
+	return &ProductsDB{c, l, make(map[string]float64)}
+}
+
+func (p *ProductsDB) handleUpdates() {
+	sub, err := p.currency.SubscribeRates(context.Background())
+
+	for {
+		rr, err := sub.Recv()
+		p.rates[rr.Destination.String()] = rr.Rate
+	}
 }
 
 func (p *Products) ToJSON(w io.Writer) error {
@@ -153,15 +163,24 @@ func getNextID() int {
 }
 
 func (p *ProductsDB) getRate(destination string) (float64, error) {
+	// if cached return
+	if r, ok := p.rates[destination]; ok {
+		return r, nil
+	}
+
 	// get exchange rate
 	rr := &protos.RateRequest{
 		Base:        protos.Currencies_EUR,
 		Destination: protos.Currencies(protos.Currencies_value[destination]),
 	}
+
 	resp, err := p.currency.GetRate(context.Background(), rr)
 	if err != nil {
 		return 0, err
 	}
+
+	// subscribe for updates
+	// err = p.currency.SubscribeRates(context.Background(), rr)
 
 	return resp.GetRate(), nil
 }
