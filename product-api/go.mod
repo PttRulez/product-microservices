@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/nicholasjackson/env v0.6.1
-	github.com/pttrulez/product-microservices/currency v0.0.0-20240716170141-a50708bd8f7f
+	github.com/pttrulez/product-microservices/currency v0.0.0-20240717084957-1be59f8a5ff9
 	google.golang.org/grpc v1.65.0
 )
 
@@ -22,7 +22,7 @@ require (
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
@@ -41,9 +41,9 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	go.mongodb.org/mongo-driver v1.16.0 // indirect
-	go.opentelemetry.io/otel v1.24.0 // indirect
-	go.opentelemetry.io/otel/metric v1.24.0 // indirect
-	go.opentelemetry.io/otel/trace v1.24.0 // indirect
+	go.opentelemetry.io/otel v1.28.0 // indirect
+	go.opentelemetry.io/otel/metric v1.28.0 // indirect
+	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect

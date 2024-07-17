@@ -1,10 +1,8 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 
-	"github.com/pttrulez/product-microservices/currency/protos"
 	"github.com/pttrulez/product-microservices/product_api/data"
 )
 
@@ -14,16 +12,23 @@ import (
 // 	200: productsResponse
 
 // GetProducts return the products from the data store
-func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
-	p.l.Info("Handle GET Products")
+func (p *Products) ListAll(rw http.ResponseWriter, r *http.Request) {
+	p.l.Debug("Handle GET Products")
 	rw.Header().Add("Content-Type", "application/json")
+	cur := r.URL.Query().Get("currency")
 
 	// fetch list of products from datastore
-	lp := data.GetProducts()
+	lp, err := p.productDB.GetProducts(cur)
+	if err != nil {
+		rw.WriteHeader(http.StatusNotFound)
+		data.ToJSON(&GenericError{Message: err.Error()}, rw)
+		return
+	}
 
 	// serialize the list to JSON
-	err := data.ToJSON(lp, rw)
+	err = data.ToJSON(lp, rw)
 	if err != nil {
+		p.l.Error("unable to serialize serialiproducts", "error", err)
 		http.Error(rw, "Unable to marshal json", http.StatusBadRequest)
 	}
 }
@@ -38,10 +43,11 @@ func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
 func (p *Products) ListSingle(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Add("Content-Type", "application/json")
 	id := getProductID(r)
+	cur := r.URL.Query().Get("currency")
 
-	p.l.Info("[DEBUG] get record id", id)
+	p.l.Debug("Get record id", id)
 
-	product, _, err := data.GetProductById(id)
+	product, err := p.productDB.GetProductByID(id, cur)
 
 	switch err {
 	case nil:
@@ -58,20 +64,6 @@ func (p *Products) ListSingle(rw http.ResponseWriter, r *http.Request) {
 		data.ToJSON(&GenericError{Message: err.Error()}, rw)
 		return
 	}
-
-	// get exchange rate
-	rr := &protos.RateRequest{
-		Base:        protos.Currencies(protos.Currencies_value["EUR"]),
-		Destination: protos.Currencies_USD,
-	}
-	resp, err := p.cc.GetRate(context.Background(), rr)
-	if err != nil {
-		p.l.Error("[Error] error getting new rate", err)
-		data.ToJSON(&GenericError{Message: err.Error()}, rw)
-		return
-	}
-
-	product.Price = resp.Rate * product.Price
 
 	err = data.ToJSON(product, rw)
 	if err != nil {

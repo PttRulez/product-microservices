@@ -41,14 +41,20 @@ func main() {
 	// create client
 	cc := protos.NewCurrencyClient(conn)
 
+	// create database instance
+	db := data.NewProductsDB(cc, l)
+
 	// create handlers
-	ph := handlers.NewProducts(l, v, cc)
+	ph := handlers.NewProducts(l, v, db)
 
 	//create mux
 	sm := mux.NewRouter()
 
 	getRouter := sm.Methods(http.MethodGet).Subrouter()
-	getRouter.HandleFunc("/products", ph.GetProducts)
+	getRouter.HandleFunc("/products", ph.ListAll).Queries("currency", "{[A-Z]{3}}")
+	getRouter.HandleFunc("/products", ph.ListAll)
+
+	getRouter.HandleFunc("/products/{id:[0-9]+}", ph.ListSingle).Queries("currency", "{[A-Z]{3}}")
 	getRouter.HandleFunc("/products/{id:[0-9]+}", ph.ListSingle)
 
 	putRouter := sm.Methods(http.MethodPut).Subrouter()

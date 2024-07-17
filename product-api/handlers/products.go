@@ -21,21 +21,20 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-hclog"
-	"github.com/pttrulez/product-microservices/currency/protos"
 	"github.com/pttrulez/product-microservices/product_api/data"
 )
 
 // Products is a http.Handler
 type Products struct {
-	l hclog.Logger
-	v *data.Validation
-	cc protos.CurrencyClient
+	l         hclog.Logger
+	v         *data.Validation
+	productDB *data.ProductsDB
 }
 
 type KeyProduct struct{}
 
-func NewProducts(l hclog.Logger, v *data.Validation, cc protos.CurrencyClient) *Products {
-	return &Products{l, v, cc}
+func NewProducts(l hclog.Logger, v *data.Validation, productDB *data.ProductsDB) *Products {
+	return &Products{l, v, productDB}
 }
 
 // ErrInvalidProductPath is an error message when the product path is not valid

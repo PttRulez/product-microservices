@@ -2,9 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/pttrulez/product-microservices/product_api/data"
 )
 
@@ -15,21 +13,25 @@ import (
 
 // DeleteProduct deletes the product from data store
 func (p *Products) DeleteProduct(rw http.ResponseWriter, r *http.Request) {
-	// this will always convert because of the router
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
+	rw.Header().Add("Content-Type", "application/json")
+	id := getProductID(r)
 
-	p.l.Info("Handle DELETE Product", id)
+	p.l.Debug("Handle DELETE Product", id)
 
 	err := data.DeleteProduct(id)
-
 	if err == data.ErrProductNotFound {
-		http.Error(rw, "Product Not found", http.StatusNotFound)
+		p.l.Error("product not found", "error", err)
+
+		rw.WriteHeader(http.StatusNotFound)
+		data.ToJSON(&GenericError{Message: err.Error()}, rw)
 		return
 	}
 
 	if err != nil {
-		http.Error(rw, "Product Not found", http.StatusInternalServerError)
+		p.l.Error("failed to delete product with id", id, "error", err)
+
+		rw.WriteHeader(http.StatusNotFound)
+		data.ToJSON(&GenericError{Message: err.Error()}, rw)
 		return
 	}
 }
