@@ -15,7 +15,7 @@ import (
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"microservices/sdk/models"
+	"github.com/pttrulez/product-microservices/product_api/sdk/models"
 )
 
 // NewCreateProductParams creates a new CreateProductParams object,

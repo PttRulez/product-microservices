@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"microservices/sdk/client"
-	"microservices/sdk/client/products"
 	"testing"
+
+	"github.com/pttrulez/product-microservices/product_api/sdk/client/products"
+
+	"github.com/pttrulez/product-microservices/product_api/sdk/client"
 )
 
 func TestOurClient(t *testing.T) {

@@ -16,63 +16,39 @@ package handlers
 
 import (
 	"fmt"
-	"log"
-	"microservices/data"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"golang.org/x/net/context"
+	"github.com/hashicorp/go-hclog"
+	"github.com/pttrulez/product-microservices/currency/protos"
+	"github.com/pttrulez/product-microservices/product_api/data"
 )
 
 // Products is a http.Handler
 type Products struct {
-	l *log.Logger
+	l hclog.Logger
+	v *data.Validation
+	cc protos.CurrencyClient
 }
 
 type KeyProduct struct{}
 
-func NewProducts(l *log.Logger) *Products {
-	return &Products{l}
+func NewProducts(l hclog.Logger, v *data.Validation, cc protos.CurrencyClient) *Products {
+	return &Products{l, v, cc}
 }
 
-func (p Products) MiddlewareProductValidation(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		product := data.Product{}
+// ErrInvalidProductPath is an error message when the product path is not valid
+var ErrInvalidProductPath = fmt.Errorf("Invalid Path, path should be /products/[id]")
 
-		err := product.FromJSON(r.Body)
-		if err != nil {
-			p.l.Println("[ERROR] deserializing product")
-			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
-			return
-		}
-
-		err = product.Validate()
-		if err != nil {
-			p.l.Println("[ERROR] validating product")
-			http.Error(
-				rw,
-				fmt.Sprintf("Error validating product: %s", err),
-				http.StatusBadRequest,
-			)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), KeyProduct{}, product)
-		req := r.WithContext(ctx)
-
-		next.ServeHTTP(rw, req)
-	})
+// GenericError is a generic error message returned by a server
+type GenericError struct {
+	Message string `json:"message"`
 }
 
 // ValidationError is a collection of validation error messages
 type ValidationError struct {
 	Messages []string `json:"messages"`
-}
-
-// GenericError is a generic error message returned by a server
-type GenericError struct {
-	Message string `json:"message"`
 }
 
 // getProductID returns the product ID from the URL

@@ -1,13 +1,15 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
-	"regexp"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/hashicorp/go-hclog"
+	"github.com/pttrulez/product-microservices/currency/protos"
 )
 
 // Product defines the structure for an API product
@@ -20,7 +22,7 @@ type Product struct {
 	ID          int     `json:"id"`
 	Name        string  `json:"name" validate:"required"`
 	Description string  `json:"description"`
-	Price       float32 `json:"price" validate:"gt=0"`
+	Price       float64 `json:"price" validate:"gt=0"`
 	SKU         string  `json:"sku" validate:"required,sku"`
 	CreatedOn   string  `json:"-"`
 	UpdatedOn   string  `json:"-"`
@@ -50,24 +52,46 @@ func (p *Product) Validate() error {
 	return validate.Struct(p)
 }
 
-func validateSKU(fl validator.FieldLevel) bool {
-	// sku is of format abc-basd-jlkj
-	re := regexp.MustCompile(`[a-z]+-[a-z]+-[a-z]+`)
-	matches := re.FindAllString(fl.Field().String(), -1)
-
-	return len(matches) == 1
-}
-
 // Products defines a slice of Product
 type Products []*Product
+
+type ProductsDB struct {
+	currency protos.CurrencyClient
+	log      hclog.Logger
+}
+
+func NewProductsDB(c protos.CurrencyClient, l hclog.Logger) *ProductsDB {
+	return &ProductsDB{c, l}
+}
 
 func (p *Products) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(p)
 }
 
-func GetProducts() Products {
-	return productList
+// GetProducts return all products from the database
+func (p *ProductsDB) GetProducts(currency string) (Products, error) {
+	if currency == "" {
+		return productList, nil
+	}
+
+	// get exchange rate
+	rr := &protos.RateRequest{
+		Base:        protos.Currencies(protos.Currencies_value["EUR"]),
+		Destination: protos.Currencies_USD,
+	}
+	resp, err := p.currency.GetRate(context.Background(), rr)
+	if err != nil {
+		p.log.Error("Unable to get rate", "currency", currency, "error", err)
+		return nil, err
+	}
+
+	pr := Products{}
+	for _, p := range productList {
+		np := *p
+		np.Price = np.Price * resp.Rate
+		pr = append(pr, &np)
+	}
 }
 
 func AddProduct(p *Product) {
@@ -100,6 +124,9 @@ func findIndexByProductID(id int) int {
 	return -1
 }
 
+// GetProductByID return a single product which matches the id from the
+// database.
+// If a product is not found this function returns a ProductNotFound error
 func GetProductById(id int) (*Product, int, error) {
 	for i, p := range productList {
 		if p.ID == id {

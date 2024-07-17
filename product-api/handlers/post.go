@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"microservices/data"
 	"net/http"
+
+	"github.com/pttrulez/product-microservices/product_api/data"
 )
 
 // swagger:route POST /products createProduct

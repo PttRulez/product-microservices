@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"microservices/data"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/pttrulez/product-microservices/product_api/data"
 )
 
 // swagger:route DELETE /products/{id} products deleteProduct
@@ -19,7 +19,7 @@ func (p *Products) DeleteProduct(rw http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
 
-	p.l.Println("Handle DELETE Product", id)
+	p.l.Info("Handle DELETE Product", id)
 
 	err := data.DeleteProduct(id)
 

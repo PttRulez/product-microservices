@@ -3,27 +3,46 @@ package main
 import (
 	"context"
 	"log"
-	"microservices/handlers"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
+
+	"github.com/pttrulez/product-microservices/product_api/data"
+	"github.com/pttrulez/product-microservices/product_api/handlers"
+
 	"github.com/go-openapi/runtime/middleware"
 	gohandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/pttrulez/product-microservices/currency"
+	"github.com/nicholasjackson/env"
+	"github.com/pttrulez/product-microservices/currency/protos"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
+
+var bindAddress = env.String("BIND_ADDRESS", false, ":9090", "Bind address for the server")
 
 func main() {
 	// create logger
-	l := log.New(os.Stdout, "product-api", log.LstdFlags)
+	l := hclog.Default()
 
-	// create handlers
-	ph := handlers.NewProducts(l)
+	// create validator
+	v := data.NewValidation()
+
+	conn, err := grpc.NewClient("localhost:9092", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
 
 	// create client
+	cc := protos.NewCurrencyClient(conn)
+
+	// create handlers
+	ph := handlers.NewProducts(l, v, cc)
 
 	//create mux
 	sm := mux.NewRouter()
@@ -34,11 +53,11 @@ func main() {
 
 	putRouter := sm.Methods(http.MethodPut).Subrouter()
 	putRouter.HandleFunc("/{id:[0-9]+}", ph.Update)
-	putRouter.Use(ph.MiddlewareProductValidation)
+	putRouter.Use(ph.MiddlewareValidateProduct)
 
 	postRouter := sm.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/", ph.Create)
-	postRouter.Use(ph.MiddlewareProductValidation)
+	postRouter.Use(ph.MiddlewareValidateProduct)
 
 	deleteRouter := sm.Methods(http.MethodDelete).Subrouter()
 	deleteRouter.HandleFunc("/{id:[0-9]+}", ph.DeleteProduct)
@@ -57,12 +76,12 @@ func main() {
 	s := &http.Server{
 		Addr:         ":9090",
 		Handler:      ch(sm),
-		ErrorLog:     l,
+		ErrorLog:     l.StandardLogger(&hclog.StandardLoggerOptions{}),
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
-
+	l.Info("Running on ")
 	go func() {
 		err := s.ListenAndServe()
 		if err != nil {
