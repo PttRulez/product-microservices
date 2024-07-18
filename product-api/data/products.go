@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-hclog"
 	"github.com/pttrulez/product-microservices/currency/protos"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Product defines the structure for an API product
@@ -59,17 +62,33 @@ type ProductsDB struct {
 	currency protos.CurrencyClient
 	log      hclog.Logger
 	rates    map[string]float64
+	client   protos.Currency_SubscribeRatesClient
 }
 
 func NewProductsDB(c protos.CurrencyClient, l hclog.Logger) *ProductsDB {
-	return &ProductsDB{c, l, make(map[string]float64)}
+	pb := &ProductsDB{c, l, make(map[string]float64), nil}
+	go pb.handleUpdates()
+	return pb
 }
 
 func (p *ProductsDB) handleUpdates() {
 	sub, err := p.currency.SubscribeRates(context.Background())
+	if err != nil {
+		p.log.Error("unable to subscribe for ratesError receiving m", "error", err)
+	}
+
+	p.client = sub
 
 	for {
 		rr, err := sub.Recv()
+		
+		p.log.Info("Received updated rate from server", "dest", rr.GetDestination().String())
+
+		if err != nil {
+			p.log.Error("error receiving message", "error", err)
+			return
+		}
+
 		p.rates[rr.Destination.String()] = rr.Rate
 	}
 }
@@ -168,21 +187,35 @@ func (p *ProductsDB) getRate(destination string) (float64, error) {
 		return r, nil
 	}
 
-	// get exchange rate
 	rr := &protos.RateRequest{
-		Base:        protos.Currencies_EUR,
+		Base:        protos.Currencies(protos.Currencies_value["EUR"]),
 		Destination: protos.Currencies(protos.Currencies_value[destination]),
 	}
 
+	// get initial rate
 	resp, err := p.currency.GetRate(context.Background(), rr)
 	if err != nil {
-		return 0, err
+		if s, ok := status.FromError(err); ok {
+			md := s.Details()[0].(*protos.RateRequest)
+
+			if s.Code() == codes.InvalidArgument {
+				return -1, fmt.Errorf(`unable to get rate from currency server, destination and 
+					base currencies cannot be the same. base %s, dest %s`, md.Base.String(), md.Destination.String())
+			}
+
+			return -1, fmt.Errorf("unable to get rate from currency server, base %s, dest %s", md.Base.String(), md.Destination.String())
+		}
+
+		return -1, err
 	}
 
-	// subscribe for updates
-	// err = p.currency.SubscribeRates(context.Background(), rr)
+	// update cache
+	p.rates[destination] = resp.Rate
 
-	return resp.GetRate(), nil
+	// subscribe for updates
+	p.client.Send(rr)
+
+	return resp.Rate, err
 }
 
 var productList = Products{

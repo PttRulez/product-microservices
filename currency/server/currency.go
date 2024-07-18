@@ -7,6 +7,8 @@ import (
 
 	"github.com/pttrulez/product-microservices/currency/data"
 	"github.com/pttrulez/product-microservices/currency/protos"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/hashicorp/go-hclog"
 )
@@ -45,7 +47,18 @@ func (c *Currency) handleUpdates() {
 						"destination", rr.GetDestination().String())
 				}
 
-				err = k.Send(&protos.RateResponse{Base: rr.Base, Destination: rr.Destination, Rate: r})
+				// err = k.Send(&protos.RateResponse{Base: rr.Base, Destination: rr.Destination, Rate: r})
+
+				err = k.Send(&protos.StreamingRateReponse{
+					Message: &protos.StreamingRateReponse_RateResponse{
+						RateResponse: &protos.RateResponse{
+							Base:        rr.Base,
+							Destination: rr.Destination,
+							Rate:        r,
+						},
+					},
+				})
+
 				if err != nil {
 					c.log.Error("Unable to get updated rate", "base", rr.GetBase().String(),
 						"destination", rr.GetDestination().String())
@@ -59,6 +72,22 @@ func (c *Currency) handleUpdates() {
 // for the two given currencies.
 func (c *Currency) GetRate(ctx context.Context, rr *protos.RateRequest) (*protos.RateResponse, error) {
 	c.log.Info("Handle GetRate", "base", rr.GetBase(), "destination", rr.GetDestination())
+
+	if rr.Base == rr.Destination {
+		err := status.Newf(
+			codes.InvalidArgument,
+			"base %s cannot be same as destination %s",
+			rr.Base.String(),
+			rr.Destination.String(),
+		)
+
+		err, wde := err.WithDetails(rr)
+		if wde != nil {
+			return nil, wde
+		}
+
+		return nil, err.Err()
+	}
 
 	rate, err := c.rates.GetRate(rr.GetBase().String(), rr.GetDestination().String())
 	if err != nil {
@@ -92,6 +121,39 @@ func (c *Currency) SubscribeRates(src protos.Currency_SubscribeRatesServer) erro
 			rrs = []*protos.RateRequest{}
 		}
 
+		// check that subscription does not exist
+		var validationError *status.Status
+		for _, v := range rrs {
+			if v.Base == rr.Base && v.Destination == rr.Destination {
+				// subscription exists return errors
+				validationError = status.Newf(
+					codes.AlreadyExists,
+					"Unable to subscribe for currency as subscription alrady exists")
+
+				// add the original request as metadata
+				validationError, err = validationError.WithDetails(rr)
+				if err != nil {
+					c.log.Error("Unable to add metadata to error")
+					break
+				}
+
+				break
+			}
+		}
+
+		// if a validation error return error and continue
+		if validationError != nil {
+			src.Send(
+				&protos.StreamingRateReponse{
+					Message: &protos.StreamingRateReponse_Error{
+						Error: validationError.Proto(),
+					},
+				},
+			)
+			continue
+		}
+
+		// all ok
 		rrs = append(rrs, rr)
 		c.subscriptions[src] = rrs
 	}
